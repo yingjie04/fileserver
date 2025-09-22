@@ -1,0 +1,91 @@
+ <!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>ファイルアップロード＆共有</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/modern-css-reset/dist/reset.min.css">
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; background: #f7f7fa; margin: 0; padding: 2em; }
+    .container { max-width: 700px; margin: auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px #0001; padding: 2em; }
+    h1 { margin-bottom: 1em; }
+    form.upload { display: flex; gap: 1em; align-items: center; margin-bottom: 2em; }
+    form.upload input[type="file"] { flex: 1; }
+    table { width: 100%; border-collapse: collapse; margin-top: 1em; }
+    th, td { padding: 0.7em; border-bottom: 1px solid #eee; text-align: left; }
+    .actions { display: flex; gap: 0.5em; }
+    .preview-img { max-width: 120px; max-height: 80px; }
+    .delete-form { display: inline; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>ファイルアップロード＆共有</h1>
+    <form class="upload" action="/upload" method="post" enctype="multipart/form-data" onsubmit="return showUploading()">
+      <input type="file" name="file" required>
+      <input type="password" name="password" placeholder="削除パスワード（省略可）">
+      <button type="submit">アップロード</button>
+    </form>
+    <div id="uploading-message" style="display:none;color:#0078d4;margin-bottom:1em;">アップロード中...</div>
+    <table>
+      <thead>
+        <tr>
+          <th>ファイル名</th>
+          <th>プレビュー</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% files.forEach(file => { %>
+          <tr>
+            <td>
+              <a href="<%= file.url %>" download><%= file.name %></a>
+            </td>
+            <td>
+              <% if (file.mime.startsWith('image/')) { %>
+                <a href="/preview/<%= file.name %>" target="_blank">
+                  <img src="/preview/<%= file.name %>" class="preview-img" alt="preview">
+                </a>
+              <% } else if (file.mime.startsWith('text/') || file.mime === 'application/json') { %>
+                <a href="/preview/<%= file.name %>" target="_blank">テキストプレビュー</a>
+              <% } else { %>
+                -
+              <% } %>
+            </td>
+            <td>
+              <div class="actions">
+                <form class="delete-form" action="/delete/<%= encodeURIComponent(file.name) %>" method="post" onsubmit="return confirmDelete(this, <%= file.hasPassword ? 'true' : 'false' %>)">
+                  <% if (file.hasPassword) { %>
+                    <input type="password" name="password" placeholder="削除パスワード" required style="width: 120px;">
+                  <% } %>
+                  <button type="submit">削除</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <script>
+    function confirmDelete(form, hasPassword) {
+      if (hasPassword && !form.password.value) {
+        alert('削除パスワードを入力してください');
+        return false;
+      }
+      return confirm('本当に削除しますか？');
+    }
+    function showUploading() {
+      document.getElementById('uploading-message').style.display = '';
+      return true;
+    }
+
+    // エラーがクエリにあればポップアップ表示
+    (function() {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('error') === 'wrong_password') {
+        alert('パスワードが違います');
+      }
+    })();
+  </script>
+</body>
+</html>
